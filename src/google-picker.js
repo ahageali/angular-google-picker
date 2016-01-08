@@ -48,7 +48,7 @@
     };
   })
 
-  .factory('GooglePicker', [lkGoogleSettings, function(lkGoogleSettings, $rootScope) {
+  .factory('GooglePicker', [lkGoogleSettings, $rootScope, function(lkGoogleSettings, $rootScope) {
     return function(onLoaded, onCancel, onPicked) {
       var accessToken = null;
       if (!onLoaded) {
