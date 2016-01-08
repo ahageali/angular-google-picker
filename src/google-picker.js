@@ -8,6 +8,7 @@
  * License: MIT
  */
 (function () {
+  'use strict';
   angular.module('lk-google-picker', [])
 
   .provider('lkGoogleSettings', function () {
@@ -34,7 +35,7 @@
         views    : this.views,
         locale   : this.locale,
         origin   : this.origin || $window.location.protocol + '//' + $window.location.host
-      }
+      };
     }];
 
     /**
@@ -47,105 +48,96 @@
     };
   })
 
-  .directive('lkGooglePicker', ['lkGoogleSettings', function (lkGoogleSettings) {
-    return {
-      restrict: 'A',
-      scope: {
-        onLoaded: '&',
-        onCancel: '&',
-        onPicked: '&'
-      },
-      link: function (scope, element, attrs) {
-        var accessToken = null;
+  .factory('GooglePicker', [lkGoogleSettings, function(lkGoogleSettings, $rootScope) {
+    return function(onLoaded, onCancel, onPicked) {
+      var accessToken = null;
 
-        /**
-         * Load required modules
-         */
-        function instanciate () {
-          gapi.load('auth', { 'callback': onApiAuthLoad });
-          gapi.load('picker');
+      /**
+       * Load required modules
+       */
+      function instanciate () {
+        gapi.load('auth', { 'callback': onApiAuthLoad });
+        gapi.load('picker');
+      }
+
+      /**
+       * OAuth autorization
+       * If user is already logged in, then open the Picker modal
+       */
+      function onApiAuthLoad () {
+        var authToken = gapi.auth.getToken();
+
+        if (authToken) {
+          handleAuthResult(authToken);
+        } else {
+          gapi.auth.authorize({
+            'client_id' : lkGoogleSettings.clientId,
+            'scope'     : lkGoogleSettings.scopes,
+            'immediate' : false
+          }, handleAuthResult);
         }
+      }
 
-        /**
-         * OAuth autorization
-         * If user is already logged in, then open the Picker modal
-         */
-        function onApiAuthLoad () {
-          var authToken = gapi.auth.getToken();
-
-          if (authToken) {
-            handleAuthResult(authToken);
-          } else {
-            gapi.auth.authorize({
-              'client_id' : lkGoogleSettings.clientId,
-              'scope'     : lkGoogleSettings.scopes,
-              'immediate' : false
-            }, handleAuthResult);
-          }
+      /**
+       * Google API OAuth response
+       */
+      function handleAuthResult (result) {
+        if (result && !result.error) {
+          accessToken = result.access_token;
+          openDialog();
         }
+      }
 
-        /**
-         * Google API OAuth response
-         */
-        function handleAuthResult (result) {
-          if (result && !result.error) {
-            accessToken = result.access_token;
-            openDialog();
-          }
-        }
+      /**
+       * Everything is good, open the files picker
+       */
+      function openDialog () {
+        var picker = new google.picker.PickerBuilder()
+                               .setLocale(lkGoogleSettings.locale)
+                               .setOAuthToken(accessToken)
+                               .setCallback(pickerResponse)
+                               .setOrigin(lkGoogleSettings.origin);
 
-        /**
-         * Everything is good, open the files picker
-         */
-        function openDialog () {
-          var picker = new google.picker.PickerBuilder()
-                                 .setLocale(lkGoogleSettings.locale)
-                                 .setOAuthToken(accessToken)
-                                 .setCallback(pickerResponse)
-                                 .setOrigin(lkGoogleSettings.origin);
-
-          if (lkGoogleSettings.features.length > 0) {
-            angular.forEach(lkGoogleSettings.features, function (feature, key) {
-              picker.enableFeature(google.picker.Feature[feature]);
-            });
-          }
-
-          if (lkGoogleSettings.views.length > 0) {
-            angular.forEach(lkGoogleSettings.views, function (view, key) {
-              view = eval('new google.picker.' + view);
-              picker.addView(view);
-            });
-          }
-
-          picker.build().setVisible(true);
-        }
-
-        /**
-         * Callback invoked when interacting with the Picker
-         * data: Object returned by the API
-         */
-        function pickerResponse (data) {
-          gapi.client.load('drive', 'v2', function () {
-            if (data.action == google.picker.Action.LOADED && scope.onLoaded) {
-              (scope.onLoaded || angular.noop)();
-            }
-            if (data.action == google.picker.Action.CANCEL && scope.onCancel) {
-              (scope.onCancel || angular.noop)();
-            }
-            if (data.action == google.picker.Action.PICKED && scope.onPicked) {
-              (scope.onPicked || angular.noop)({docs: data.docs});
-            }
-            scope.$apply();
+        if (lkGoogleSettings.features.length > 0) {
+          angular.forEach(lkGoogleSettings.features, function (feature, key) {
+            picker.enableFeature(google.picker.Feature[feature]);
           });
         }
 
-        gapi.load('auth');
-        gapi.load('picker');
+        if (lkGoogleSettings.views.length > 0) {
+          angular.forEach(lkGoogleSettings.views, function (view, key) {
+            view = new google.picker[view]();
+            picker.addView(view);
+          });
+        }
 
-        element.bind('click', function (e) {
-          instanciate();
+        picker.build().setVisible(true);
+      }
+
+      /**
+       * Callback invoked when interacting with the Picker
+       * data: Object returned by the API
+       */
+      function pickerResponse (data) {
+        gapi.client.load('drive', 'v2', function () {
+          $rootScope.$apply(function() {
+            if (data.action == google.picker.Action.LOADED) {
+              (onLoaded || angular.noop)();
+            }
+            if (data.action == google.picker.Action.CANCEL) {
+              (onCancel || angular.noop)();
+            }
+            if (data.action == google.picker.Action.PICKED) {
+              (onPicked || angular.noop)({docs: data.docs});
+            }
+          });
         });
       }
-    }
+
+      gapi.load('auth');
+      gapi.load('picker');
+
+      this.showPicker = instanciate;
+    };
   }]);
 })();
