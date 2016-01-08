@@ -51,6 +51,15 @@
   .factory('GooglePicker', [lkGoogleSettings, function(lkGoogleSettings, $rootScope) {
     return function(onLoaded, onCancel, onPicked) {
       var accessToken = null;
+      if (!onLoaded) {
+        onLoaded = angular.noop;
+      }
+      if (!onCancel) {
+        onCancel = angular.noop;
+      }
+      if (!onPicked) {
+        onPicked = angular.noop;
+      }
 
       /**
        * Load required modules
@@ -122,13 +131,13 @@
         gapi.client.load('drive', 'v2', function () {
           $rootScope.$apply(function() {
             if (data.action == google.picker.Action.LOADED) {
-              (onLoaded || angular.noop)();
+              onLoaded();
             }
             if (data.action == google.picker.Action.CANCEL) {
-              (onCancel || angular.noop)();
+              onCancel();
             }
             if (data.action == google.picker.Action.PICKED) {
-              (onPicked || angular.noop)({docs: data.docs});
+              onPicked({docs: data.docs});
             }
           });
         });
