@@ -116,7 +116,7 @@
         if (lkGoogleSettings.views.length > 0) {
           angular.forEach(lkGoogleSettings.views, function (view, key) {
             //TODO: there has to be a better way for this
-            view = eval('new google.picker.' + view)();
+            view = eval('new google.picker.' + view);
             picker.addView(view);
           });
         }
