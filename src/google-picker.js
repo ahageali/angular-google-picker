@@ -82,7 +82,7 @@
           gapi.auth.authorize({
             'client_id' : lkGoogleSettings.clientId,
             'scope'     : lkGoogleSettings.scopes,
-            'immediate' : false
+            'immediate' : true
           }, handleAuthResult);
         }
       }
