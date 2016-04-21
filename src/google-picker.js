@@ -91,7 +91,7 @@
           openDialog();
         }
         else if (result) {
-          onError(result.error);
+          onError(result);
         }
         else {
           onError(new Error('result object is not defined'));
