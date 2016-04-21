@@ -49,17 +49,12 @@
   })
 
   .factory('GooglePicker', ['lkGoogleSettings', '$rootScope', function(lkGoogleSettings, $rootScope) {
-    return function(onLoaded, onCancel, onPicked) {
+    return function(onLoaded, onCancel, onPicked, onError) {
       var accessToken = null;
-      if (!onLoaded) {
-        onLoaded = angular.noop;
-      }
-      if (!onCancel) {
-        onCancel = angular.noop;
-      }
-      if (!onPicked) {
-        onPicked = angular.noop;
-      }
+      onLoaded = onLoaded || angular.noop;
+      onCancel = onCancel || angular.noop;
+      onPicked = onPicked || angular.noop;
+      onError = onError || angular.noop;
 
       /**
        * Load required modules
@@ -94,6 +89,12 @@
         if (result && !result.error) {
           accessToken = result.access_token;
           openDialog();
+        }
+        else if (result) {
+          onError(result.error);
+        }
+        else {
+          onError(new Error('result object is not defined'));
         }
       }
 
